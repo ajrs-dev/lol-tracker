@@ -1,6 +1,7 @@
 <div align="center">
 
 # ⚔️ Rift Index
+**[Live demo](https://lol-tracker-theta.vercel.app/)** — try it.
 
 **A League of Legends stat tracker for people with opinions about their teammates.**
 
