@@ -1,26 +1,123 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/**
+ * Palette lifted from the League client: parchment golds on near-black void
+ * blue, with hextech teal as the interactive accent.
+ */
+@theme {
+  --color-gold-50: #f0e6d2;
+  --color-gold-100: #d9c08f;
+  --color-gold-200: #c8aa6e;
+  --color-gold-300: #c89b3c;
+  --color-gold-400: #785a28;
+  --color-gold-500: #463714;
+
+  --color-hex-200: #6ee0f0;
+  --color-hex-300: #0ac8b9;
+  --color-hex-400: #0397ab;
+  --color-hex-500: #005a82;
+  --color-hex-600: #0a323c;
+
+  --color-void-50: #cdbe91;
+  --color-void-100: #a09b8c;
+  --color-void-200: #5b5a56;
+  --color-void-300: #3c3c41;
+  --color-void-400: #1e2328;
+  --color-void-500: #161d26;
+  --color-void-600: #10171f;
+  --color-void-700: #0a1428;
+  --color-void-800: #071019;
+  --color-void-900: #010a13;
+
+  --color-win: #2f9e5f;
+  --color-loss: #c8324b;
+
+  --font-display: var(--font-display-face), ui-serif, Georgia, serif;
+  --font-sans: var(--font-body-face), ui-sans-serif, system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer base {
+  html {
+    color-scheme: dark;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  body {
+    background-color: var(--color-void-900);
+    color: var(--color-gold-50);
+    font-family: var(--font-sans);
+    /* Two cool pools of light so the flat black doesn't read as dead space. */
+    background-image:
+      radial-gradient(
+        ellipse 80% 50% at 50% -10%,
+        rgba(10, 200, 185, 0.08),
+        transparent
+      ),
+      radial-gradient(
+        ellipse 60% 40% at 90% 10%,
+        rgba(200, 155, 60, 0.06),
+        transparent
+      );
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: var(--color-gold-300);
+    color: var(--color-void-900);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-gold-200);
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-void-800);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-void-300);
+    border: 2px solid var(--color-void-800);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-gold-400);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/**
+ * Small set of shared surfaces. Everything else composes with utilities —
+ * these exist because the gold-trim treatment repeats on nearly every card.
+ */
+@utility panel {
+  border: 1px solid var(--color-void-300);
+  background-color: color-mix(in srgb, var(--color-void-600) 85%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+@utility panel-gold {
+  border: 1px solid color-mix(in srgb, var(--color-gold-400) 70%, transparent);
+  background-color: color-mix(in srgb, var(--color-void-600) 85%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+/** Hairline divider that fades out at both ends. */
+@utility rule-gold {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--color-gold-400),
+    transparent
+  );
+}
+
+/** Uppercase micro-label used for stat captions and section eyebrows. */
+@utility eyebrow {
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-void-100);
 }
