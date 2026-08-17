@@ -58,8 +58,8 @@ export default async function Home() {
 
         <p className="mt-3 text-sm text-void-200">
           The tag is optional — try{" "}
-          <span className="text-void-50">Doublelift</span> or{" "}
-          <span className="text-void-50">Doublelift#NA1</span>
+          <span className="text-void-50">Hide on bush</span> or{" "}
+          <span className="text-void-50">Hide on bush#KR1</span>
         </p>
       </section>
 
