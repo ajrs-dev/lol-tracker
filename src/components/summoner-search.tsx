@@ -8,10 +8,14 @@ import { splitRiotId, summonerPath } from "@/lib/riot-id";
 interface Props {
   /** Header variant: single row, tighter controls. */
   compact?: boolean;
+  /**
+   * Defaults to Korea so the Hide on bush examples resolve as typed — kr tries
+   * KR1 first, which is the real account. Pass a code to preselect another.
+   */
   defaultRegion?: RegionCode;
 }
 
-export function SummonerSearch({ compact = false, defaultRegion = "na1" }: Props) {
+export function SummonerSearch({ compact = false, defaultRegion = "kr" }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [region, setRegion] = useState<RegionCode>(defaultRegion);

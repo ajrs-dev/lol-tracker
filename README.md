@@ -36,9 +36,9 @@ Enter a Riot ID in any of 17 regions and get:
 - **Champion mastery, sorted by devotion** — every champion they've ever touched, with levels, point totals, and progress to the next level. Find out whether their "main" is a 400k-point marriage or a 12k-point situationship.
 - **The last 8 games, honestly told** — KDA, CS per minute, kill participation, damage, vision score, and the full item build for every game. Remakes are detected and excused. Everything else is on the record.
 
-**The tag is optional.** Search `Doublelift` and the region's usual taglines get
-tried — `NA1`, then `NA` — redirecting to whichever actually has an account, so
-the resolved tag ends up in the address bar. It's a guess, not a lookup: Riot
+**The tag is optional.** Search `Hide on bush` and the region's usual taglines
+get tried — `KR1`, then `KR` — redirecting to whichever actually has an account,
+so the resolved tag ends up in the address bar. It's a guess, not a lookup: Riot
 retired search-by-name, and players can set any tag they like. Include it when
 you know it.
 
