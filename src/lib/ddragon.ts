@@ -1,4 +1,5 @@
 import { cache } from "react";
+import SKIN_ART from "./skin-art.json";
 import type {
   ChampionDetail,
   ChampionSkin,
@@ -61,75 +62,29 @@ export const getChampion = cache(
   },
 );
 
-/** Long enough for a cold CDN edge, short enough not to stall a build. */
-const ART_CHECK_TIMEOUT = 10_000;
-
-/** A dropped connection costs a real skin, so give each check another look. */
-const ART_CHECK_ATTEMPTS = 3;
+/** `champion.id` -> the skin numbers Riot publishes loading art for. */
+const ART_BY_CHAMPION: Record<string, number[] | undefined> = SKIN_ART.skins;
 
 /**
- * A skin entry is only worth rendering if Riot published art for it. Missing
- * art answers 403 rather than 404, so `res.ok` is the signal either way.
+ * Chromas are named after the skin they recolour: "<skin name> (<colour>)",
+ * where that skin is in the same list carrying the `chromas` flag. Matching
+ * both halves is specific enough to drop an entry on sight — checked against
+ * every skin Riot ships, it accounts for 6,044 of the 6,976 artless entries
+ * and has never once matched an entry that does have art.
+ *
+ * It's only a naming rule, so it isn't the primary filter — the manifest is.
+ * This is what catches a champion the manifest predates, and it misses the
+ * chromas where Riot's data carries a stray double space ("Pumpkin Prince
+ * Amumu (Ruby)"), which is why it isn't trusted alone.
  */
-async function hasLoadingArt(
-  championId: string,
-  skinNum: number,
-): Promise<boolean> {
-  const url = championLoadingUrl(championId, skinNum);
-
-  for (let attempt = 1; attempt <= ART_CHECK_ATTEMPTS; attempt++) {
-    try {
-      const res = await fetch(url, {
-        // HEAD is enough — we only need the status, not the JPEG. Next only
-        // caches 2xx, so the hits come free on a warm build and it's the
-        // misses that get re-checked; keeping them cheap is the point.
-        method: "HEAD",
-        cache: "force-cache",
-        next: { revalidate: STATIC_TTL, tags: ["ddragon"] },
-        // Bounds the wait, and opts out of request-level memoization — which
-        // is what lets a retry reach the network at all, since Next remembers
-        // the rejected promise from the previous attempt.
-        signal: AbortSignal.timeout(ART_CHECK_TIMEOUT),
-      });
-      return res.ok;
-    } catch {
-      if (attempt < ART_CHECK_ATTEMPTS) {
-        await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
-      }
-    }
-  }
-
-  // Don't render art we couldn't confirm. A prerender lasts until the next
-  // revalidation, so guessing wrong here would pin a broken image to the page
-  // for half a day; a missing tile is the cheaper mistake.
-  return false;
-}
-
-/**
- * A champion can carry 100 skin entries, and each page gets 60 seconds to
- * prerender, so the checks have to run wide: a limit of 6 meant 17 sequential
- * rounds for Akali, which blew the budget on CI where latency is higher than
- * it is locally. Firing all 100 at once is what the retry above exists for —
- * the CDN starts dropping connections — so this sits between the two.
- */
-const ART_CHECK_LIMIT = 16;
-
-async function mapWithLimit<T, R>(
-  items: T[],
-  limit: number,
-  worker: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let next = 0;
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, async () => {
-      while (next < items.length) {
-        const index = next++;
-        results[index] = await worker(items[index]);
-      }
-    }),
+function isChroma(skin: ChampionSkin, skins: ChampionSkin[]): boolean {
+  const parent = /^(.*) \(.+\)$/.exec(skin.name)?.[1];
+  return (
+    parent !== undefined &&
+    skins.some(
+      (other) => other !== skin && other.chromas && other.name === parent,
+    )
   );
-  return results;
 }
 
 /**
@@ -137,22 +92,28 @@ async function mapWithLimit<T, R>(
  * quarters of the entries — and Riot ships no art for them, so rendering the
  * raw list gives a wall of broken images (Fiora: 100 entries, 17 with art).
  *
- * Nothing in the payload separates the two. `chromas` flags the *parent* skin
- * rather than the chromas themselves, and the names are no help: "Praetorian
- * Fiddlesticks" reads like a skin but has no art, while "Prestige K/DA Ahri
- * (2022)" reads like a chroma and does. Asking the CDN is the only rule that
- * holds, and it self-corrects whenever Riot fills a gap in.
+ * Nothing in the payload separates the two, and no rule over the names does it
+ * either: "Praetorian Fiddlesticks" reads like a skin and has no art, while
+ * "Prestige K/DA Ahri (2022)" reads like a chroma and has some. Only the CDN
+ * knows, and asking it here is what `skin-art.json` exists to avoid — 9,000
+ * requests made while rendering left builds at the mercy of CDN latency, and a
+ * burst of connection timeouts silently emptied whole galleries. The manifest
+ * settles it offline instead; `npm run refresh-skin-art` rebuilds it.
+ *
+ * The manifest is the whole answer for a champion it lists, so a patch that
+ * adds skins won't show them until it's refreshed — a missing tile, never a
+ * broken one. A champion it has never seen is the one case that falls back to
+ * the naming rule, so a new release isn't a blank gallery.
  */
-export const getSkinsWithArt = cache(
-  async (champion: ChampionDetail): Promise<ChampionSkin[]> => {
-    const available = await mapWithLimit(
-      champion.skins,
-      ART_CHECK_LIMIT,
-      (skin) => hasLoadingArt(champion.id, skin.num),
-    );
-    return champion.skins.filter((_, index) => available[index]);
-  },
-);
+export function getSkinsWithArt(champion: ChampionDetail): ChampionSkin[] {
+  const known = ART_BY_CHAMPION[champion.id];
+  if (!known) {
+    return champion.skins.filter((skin) => !isChroma(skin, champion.skins));
+  }
+
+  const withArt = new Set(known);
+  return champion.skins.filter((skin) => withArt.has(skin.num));
+}
 
 /**
  * Mastery and match payloads identify champions by numeric key, so we need the

@@ -81,6 +81,7 @@ Grab a free development key at [developer.riotgames.com](https://developer.riotg
 - Caching is tuned per endpoint: finished matches are immutable, so they're cached for a week; champion data holds for 12 hours; live-ish data (rank, mastery) for minutes. Your dev key's rate limit is treated like the scarce resource it is.
 - A profile page is one PUUID resolution followed by parallel fetches for rank, mastery, score, and matches — and the non-critical calls fail soft, so one flaky endpoint never blanks the page.
 - Champion pages are prerendered at build time; loose spellings (`/champions/missfortune`) still resolve on demand.
+- Data Dragon lists chromas as if they were skins and ships no art for them — three quarters of the entries — so the skin gallery goes by `src/lib/skin-art.json`, a checked-in list of the skins Riot actually has art for. Run `npm run refresh-skin-art` after a patch adds skins; it's the only thing that talks to the CDN about art, which keeps builds off the network entirely.
 
 **Regions:** NA · EUW · EUNE · KR · BR · JP · LAN · LAS · OCE · TR · RU · ME · PH · SG · TH · TW · VN
 

@@ -93,7 +93,7 @@ export default async function ChampionPage(
   if (!champion) notFound();
 
   // Skin 0 is the base skin; it's already the hero splash above.
-  const alternateSkins = (await getSkinsWithArt(champion)).filter(
+  const alternateSkins = getSkinsWithArt(champion).filter(
     (skin) => skin.num !== 0,
   );
 
