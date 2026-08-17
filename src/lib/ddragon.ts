@@ -64,18 +64,36 @@ export const getChampion = cache(
 /** Long enough for a cold CDN edge, short enough not to stall a build. */
 const ART_CHECK_TIMEOUT = 10_000;
 
-/** A dropped connection costs a real skin, so give each check another look. */
-const ART_CHECK_ATTEMPTS = 3;
+/**
+ * A refused check costs a real skin, so give each one several looks, backing
+ * off far enough to be worth making — a throttled CDN wants less traffic, not
+ * the same amount sooner.
+ */
+const ART_CHECK_ATTEMPTS = 4;
 
 /**
- * A skin entry is only worth rendering if Riot published art for it. Missing
- * art answers 403 rather than 404, so `res.ok` is the signal either way.
+ * Art Riot doesn't have answers 403 — the bucket denies the listing rather than
+ * reporting a miss — and 404 covers anything served conventionally. Every other
+ * status is the CDN declining to answer, which is not the same thing.
+ */
+function isMissing(status: number): boolean {
+  return status === 403 || status === 404;
+}
+
+/**
+ * A skin entry is only worth rendering if Riot published art for it.
+ *
+ * Treating every non-2xx as "no art" is the trap here: under load the CDN
+ * starts answering 429 and 5xx, whole champions at a time, and reading those as
+ * absence quietly deleted all of Renekton's skins on one build and all of
+ * Vladimir's on another. Only 403 and 404 mean the art isn't there.
  */
 async function hasLoadingArt(
   championId: string,
   skinNum: number,
 ): Promise<boolean> {
   const url = championLoadingUrl(championId, skinNum);
+  let lastError: unknown;
 
   for (let attempt = 1; attempt <= ART_CHECK_ATTEMPTS; attempt++) {
     try {
@@ -91,28 +109,38 @@ async function hasLoadingArt(
         // the rejected promise from the previous attempt.
         signal: AbortSignal.timeout(ART_CHECK_TIMEOUT),
       });
-      return res.ok;
-    } catch {
-      if (attempt < ART_CHECK_ATTEMPTS) {
-        await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
-      }
+      if (res.ok) return true;
+      if (isMissing(res.status)) return false;
+      lastError = new Error(`Data Dragon answered ${res.status} for ${url}`);
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < ART_CHECK_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** (attempt - 1)));
     }
   }
 
-  // Don't render art we couldn't confirm. A prerender lasts until the next
-  // revalidation, so guessing wrong here would pin a broken image to the page
-  // for half a day; a missing tile is the cheaper mistake.
-  return false;
+  // Neither guess is safe once the CDN has stopped answering: rendering the art
+  // risks a broken image, and dropping it silently is what deleted those
+  // galleries, leaving "Skins (0)" with nothing to say why. Give up instead and
+  // let the caller fail. `next build` retries a page three times before failing
+  // the build, so a blip resolves itself and a real outage is loud; on
+  // revalidation the throw keeps the last good prerender, stale but never wrong.
+  throw new Error(`Data Dragon art check failed for ${championId}_${skinNum}`, {
+    cause: lastError,
+  });
 }
 
 /**
- * A champion can carry 100 skin entries, and each page gets 60 seconds to
- * prerender, so the checks have to run wide: a limit of 6 meant 17 sequential
- * rounds for Akali, which blew the budget on CI where latency is higher than
- * it is locally. Firing all 100 at once is what the retry above exists for —
- * the CDN starts dropping connections — so this sits between the two.
+ * What breaks first here isn't the CDN, it's the number of sockets opened to it
+ * at once: `next build` runs eleven workers, so this is multiplied by eleven,
+ * and past roughly a hundred the connections start timing out before they're
+ * established. Skipping the recognisable chromas cut the work to a third, which
+ * buys back the room to keep this low — Master Yi needs the most checks at 80,
+ * ten rounds, and a page has 180 seconds.
  */
-const ART_CHECK_LIMIT = 16;
+const ART_CHECK_LIMIT = 8;
 
 async function mapWithLimit<T, R>(
   items: T[],
@@ -133,24 +161,48 @@ async function mapWithLimit<T, R>(
 }
 
 /**
+ * Chromas are named after the skin they recolour: "<skin name> (<colour>)",
+ * where that skin is in the same list carrying the `chromas` flag. Matching
+ * both halves is specific enough to drop an entry unasked — checked against
+ * every skin Riot ships, it accounts for 6,044 of the 6,976 artless entries
+ * and has never once matched an entry that does have art.
+ *
+ * It is still only a naming rule, so it is trusted to skip a request and
+ * nothing more. Whatever it doesn't recognise gets verified as before,
+ * including the chromas it misses where Riot's data carries a stray double
+ * space ("Pumpkin Prince  Amumu (Ruby)").
+ */
+function isChroma(skin: ChampionSkin, skins: ChampionSkin[]): boolean {
+  const parent = /^(.*) \(.+\)$/.exec(skin.name)?.[1];
+  return (
+    parent !== undefined &&
+    skins.some(
+      (other) => other !== skin && other.chromas && other.name === parent,
+    )
+  );
+}
+
+/**
  * Data Dragon's `skins` array lists chromas next to real skins — roughly three
  * quarters of the entries — and Riot ships no art for them, so rendering the
  * raw list gives a wall of broken images (Fiora: 100 entries, 17 with art).
  *
- * Nothing in the payload separates the two. `chromas` flags the *parent* skin
- * rather than the chromas themselves, and the names are no help: "Praetorian
- * Fiddlesticks" reads like a skin but has no art, while "Prestige K/DA Ahri
- * (2022)" reads like a chroma and does. Asking the CDN is the only rule that
- * holds, and it self-corrects whenever Riot fills a gap in.
+ * Nothing in the payload separates the two outright. `chromas` flags the
+ * *parent* skin rather than the chromas themselves, and names alone are no
+ * help: "Praetorian Fiddlesticks" reads like a skin but has no art, while
+ * "Prestige K/DA Ahri (2022)" reads like a chroma and does. So the recognisable
+ * chromas are dropped up front and everything else is put to the CDN, which
+ * settles the rest and self-corrects whenever Riot fills a gap in.
  */
 export const getSkinsWithArt = cache(
   async (champion: ChampionDetail): Promise<ChampionSkin[]> => {
-    const available = await mapWithLimit(
-      champion.skins,
-      ART_CHECK_LIMIT,
-      (skin) => hasLoadingArt(champion.id, skin.num),
+    const candidates = champion.skins.filter(
+      (skin) => !isChroma(skin, champion.skins),
     );
-    return champion.skins.filter((_, index) => available[index]);
+    const available = await mapWithLimit(candidates, ART_CHECK_LIMIT, (skin) =>
+      hasLoadingArt(champion.id, skin.num),
+    );
+    return candidates.filter((_, index) => available[index]);
   },
 );
 
