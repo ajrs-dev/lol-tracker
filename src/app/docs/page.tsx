@@ -103,8 +103,8 @@ const DDRAGON_ENDPOINTS: EndpointRow[] = [
     name: "skin art (HEAD)",
     path: "/cdn/img/champion/loading/{id}_{skin}.jpg",
     host: "ddragon",
-    cache: "12 hours",
-    note: "Most skin entries are artless chromas; checked so none are shown.",
+    cache: "checked offline",
+    note: "Which skins have art. Precomputed, so no build requests.",
   },
 ];
 
