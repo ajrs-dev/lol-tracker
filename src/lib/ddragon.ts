@@ -106,11 +106,13 @@ async function hasLoadingArt(
 }
 
 /**
- * A champion can carry 100 skin entries. Firing them all at once — across the
- * workers `next build` runs in parallel — makes the CDN drop connections, and
- * every dropped check costs a real skin, so keep a lid on it.
+ * A champion can carry 100 skin entries, and each page gets 60 seconds to
+ * prerender, so the checks have to run wide: a limit of 6 meant 17 sequential
+ * rounds for Akali, which blew the budget on CI where latency is higher than
+ * it is locally. Firing all 100 at once is what the retry above exists for —
+ * the CDN starts dropping connections — so this sits between the two.
  */
-const ART_CHECK_LIMIT = 6;
+const ART_CHECK_LIMIT = 16;
 
 async function mapWithLimit<T, R>(
   items: T[],
