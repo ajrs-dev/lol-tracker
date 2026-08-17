@@ -2,9 +2,12 @@ import Link from "next/link";
 import { SummonerSearch } from "@/components/summoner-search";
 
 /**
- * Reached when Riot has no account for the searched Riot ID. `not-found.tsx`
- * takes no props, so the copy stays generic — the failing ID is already in the
- * address bar.
+ * Reached when Riot has no account for the searched Riot ID — from the profile
+ * route when an explicit tag misses, and from the resolver above it when every
+ * guessed tag misses. It sits at the `[name]` level so it covers both.
+ *
+ * `not-found.tsx` takes no props, so the copy stays generic — the failing ID is
+ * already in the address bar.
  */
 export default function SummonerNotFound() {
   return (
@@ -15,10 +18,12 @@ export default function SummonerNotFound() {
           No player with that Riot ID
         </h1>
         <p className="mx-auto mt-3 max-w-md leading-relaxed text-void-100">
-          Riot has no account for that name and tag on this region. Tags
-          aren&apos;t always the region code — check the exact spelling of the
-          part after the <span className="text-void-50">#</span>, and that the
-          region matches where the account is played.
+          Riot has no account matching that lookup on this region. If you left
+          the tag off, try adding it — only the region&apos;s usual tags get
+          tried, and players can pick anything they like. Otherwise check the
+          spelling of the part after the{" "}
+          <span className="text-void-50">#</span>, and that the region matches
+          where the account is played.
         </p>
       </div>
 

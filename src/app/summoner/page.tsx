@@ -27,10 +27,11 @@ export default function SummonerLandingPage() {
       </div>
 
       <p className="mt-4 text-center text-sm text-void-200">
-        Pick the region, then enter the full Riot ID including the tag — like{" "}
-        <span className="text-void-50">Faker#KR1</span>. The tag is the part
-        after the <span className="text-void-50">#</span>, and it isn&apos;t
-        always the region code.
+        Pick the region, then enter the Riot ID — like{" "}
+        <span className="text-void-50">Faker#KR</span>. The tag after the{" "}
+        <span className="text-void-50">#</span> is optional: leave it off and
+        the region&apos;s usual tags get tried. Include it when you know it,
+        since tags aren&apos;t always the region code.
       </p>
 
       {!hasApiKey() && (

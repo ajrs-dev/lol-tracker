@@ -124,7 +124,7 @@ async function riotFetch<T>(url: string, revalidate: number): Promise<T> {
 /* Endpoints                                                           */
 /* ------------------------------------------------------------------ */
 
-/** account-v1 — resolve a Riot ID ("Faker#KR1") to a PUUID. */
+/** account-v1 — resolve a Riot ID ("Hide on bush#KR1") to a PUUID. */
 export const getAccount = cache(
   async (region: RegionCode, gameName: string, tagLine: string): Promise<RiotAccount> => {
     const url = `${accountHost(region)}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(
