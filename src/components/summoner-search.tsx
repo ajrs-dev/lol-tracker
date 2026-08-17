@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { REGION_CODES, REGIONS, type RegionCode } from "@/lib/regions";
+import { splitRiotId, summonerPath } from "@/lib/riot-id";
 
 interface Props {
   /** Header variant: single row, tighter controls. */
@@ -23,34 +24,27 @@ export function SummonerSearch({ compact = false, defaultRegion = "na1" }: Props
     const raw = query.trim();
 
     if (!raw) {
-      setError("Enter a Riot ID, like Faker#KR1");
+      setError("Enter a name, like Faker or Faker#KR");
       return;
     }
 
-    // Game names may contain '#'? They may not, but splitting on the last one
-    // is the safer read of "Name#TAG" either way.
-    const hashAt = raw.lastIndexOf("#");
+    const parsed = splitRiotId(raw);
 
-    // Riot retired lookup-by-name, so the tag is the only way to resolve a
-    // player. Guessing one from the region is wrong more often than not
-    // (Doublelift#NA1, not #NA) — better to ask than to navigate into a 404.
-    if (hashAt === -1) {
-      setError("Include the tag too, like Faker#KR1");
-      return;
-    }
-
-    const gameName = raw.slice(0, hashAt).trim();
-    const tagLine = raw.slice(hashAt + 1).trim();
-
-    if (!gameName || !tagLine) {
+    // A '#' that didn't yield both halves ("Faker#", "#KR") is a typo, not an
+    // omitted tag — say so rather than searching for a name containing '#'.
+    if (!parsed && raw.includes("#")) {
       setError("Riot IDs look like Name#TAG");
       return;
     }
 
     setError(null);
     startTransition(() => {
+      // No tag is fine: the server tries the region's default taglines and
+      // redirects to whichever one resolves.
       router.push(
-        `/summoner/${region}/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`,
+        parsed
+          ? summonerPath(region, parsed.gameName, parsed.tagLine)
+          : summonerPath(region, raw),
       );
     });
   }
@@ -89,7 +83,7 @@ export function SummonerSearch({ compact = false, defaultRegion = "na1" }: Props
             setQuery(event.target.value);
             if (error) setError(null);
           }}
-          placeholder="Name#TAG"
+          placeholder="Name or Name#TAG"
           autoComplete="off"
           spellCheck={false}
           aria-invalid={error ? true : undefined}

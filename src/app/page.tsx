@@ -57,8 +57,9 @@ export default async function Home() {
         </div>
 
         <p className="mt-3 text-sm text-void-200">
-          Include the tag — like{" "}
-          <span className="text-void-50">Faker#KR1</span>
+          The tag is optional — try{" "}
+          <span className="text-void-50">Doublelift</span> or{" "}
+          <span className="text-void-50">Doublelift#NA1</span>
         </p>
       </section>
 

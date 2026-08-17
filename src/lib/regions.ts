@@ -74,3 +74,25 @@ export function accountHost(code: RegionCode): string {
   const route = REGIONS[code].route;
   return `https://${route === "sea" ? "asia" : route}.api.riotgames.com`;
 }
+
+/**
+ * Tagline candidates to try when a lookup omits one, likeliest first.
+ *
+ * Riot's defaults follow no single rule, so all three shapes are needed:
+ *
+ *   NA1  the platform code — Doublelift#NA1 resolves, Doublelift#NA doesn't
+ *   KR1  platform codes without a digit still tag numbered — Hide on bush#KR1
+ *        is the real account, Hide on bush#KR is a different one entirely
+ *   EUW  the short label — Caps#EUW and Agurin#EUW resolve, Caps#EUW1 doesn't
+ *
+ * Verified against account-v1. Most regions collapse to two candidates.
+ *
+ * This stays a guess. Players can set any tagline they like, and Riot retired
+ * lookup-by-name, so there is no way to enumerate the real one.
+ */
+export function defaultTagLines(code: RegionCode): string[] {
+  const { platform, short } = REGIONS[code];
+  const upper = platform.toUpperCase();
+  const numbered = /\d$/.test(upper) ? upper : `${upper}1`;
+  return [...new Set([numbered, upper, short])];
+}

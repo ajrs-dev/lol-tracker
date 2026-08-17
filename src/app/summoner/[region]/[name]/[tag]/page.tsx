@@ -9,6 +9,7 @@ import { formatNumber, timeAgo } from "@/lib/format";
 import { IN_DEVELOPMENT, KEY_FAULT_NOTICE, isKeyFault } from "@/lib/key-notice";
 import { getRegion, isRegionCode } from "@/lib/regions";
 import { RiotApiError, getSummonerProfile, hasApiKey } from "@/lib/riot";
+import { decodeParam } from "@/lib/riot-id";
 import type { SummonerProfile } from "@/lib/types";
 
 /**
@@ -16,19 +17,6 @@ import type { SummonerProfile } from "@/lib/types";
  * has a rate limit to respect — two minutes is a reasonable middle.
  */
 export const revalidate = 120;
-
-/**
- * Route params arrive still percent-encoded ("Hide%20on%20bush"), and the Riot
- * client encodes what it's given — so decode here or names with spaces get
- * double-encoded and 404. A lone '%' isn't a valid escape; keep it literal.
- */
-function decodeParam(value: string): string {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-}
 
 export async function generateMetadata(
   props: PageProps<"/summoner/[region]/[name]/[tag]">,
