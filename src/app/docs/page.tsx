@@ -99,6 +99,13 @@ const DDRAGON_ENDPOINTS: EndpointRow[] = [
     cache: "12 hours",
     note: "Keyed by numeric id so match rows can show spell icons.",
   },
+  {
+    name: "skin art (HEAD)",
+    path: "/cdn/img/champion/loading/{id}_{skin}.jpg",
+    host: "ddragon",
+    cache: "12 hours",
+    note: "Most skin entries are artless chromas; checked so none are shown.",
+  },
 ];
 
 function EndpointTable({ rows }: { rows: EndpointRow[] }) {
