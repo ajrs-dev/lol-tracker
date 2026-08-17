@@ -23,8 +23,9 @@ export default async function ChampionsPage() {
         <p className="eyebrow">Patch {version}</p>
         <h1 className="mt-1 font-display text-4xl text-gold-50">Champions</h1>
         <p className="mt-2 max-w-2xl text-void-100">
-          All {champions.length} champions, straight from Riot&apos;s Data
-          Dragon. Pick one for its full kit, base stats, and skin gallery.
+          All {champions.length}{" "}
+          champions, straight from Riot&apos;s Data Dragon. Pick one for its
+          full kit, base stats, and skin gallery.
         </p>
       </header>
 
