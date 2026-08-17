@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SummonerSearch } from "@/components/summoner-search";
+import { IN_DEVELOPMENT, KEY_FAULT_NOTICE } from "@/lib/key-notice";
 import { hasApiKey } from "@/lib/riot";
 
 export const metadata: Metadata = {
@@ -35,21 +36,29 @@ export default function SummonerLandingPage() {
       {!hasApiKey() && (
         <div className="panel-gold mt-10 rounded-lg p-5 text-sm">
           <p className="font-display text-lg text-gold-100">
-            No Riot API key configured
+            {IN_DEVELOPMENT
+              ? "No Riot API key configured"
+              : KEY_FAULT_NOTICE.heading}
           </p>
           <p className="mt-2 leading-relaxed text-void-50">
-            Player lookup needs a Riot API key. Grab one at{" "}
-            <a
-              href="https://developer.riotgames.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-hex-300 underline-offset-4 hover:underline"
-            >
-              developer.riotgames.com
-            </a>
-            , add it to <code className="text-gold-200">.env.local</code> as{" "}
-            <code className="text-gold-200">RIOT_API_KEY</code>, and restart the
-            dev server. Champion browsing works without one.
+            {IN_DEVELOPMENT ? (
+              <>
+                Player lookup needs a Riot API key. Grab one at{" "}
+                <a
+                  href="https://developer.riotgames.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-hex-300 underline-offset-4 hover:underline"
+                >
+                  developer.riotgames.com
+                </a>
+                , add it to <code className="text-gold-200">.env.local</code> as{" "}
+                <code className="text-gold-200">RIOT_API_KEY</code>, and restart
+                the dev server. Champion browsing works without one.
+              </>
+            ) : (
+              KEY_FAULT_NOTICE.message
+            )}
           </p>
         </div>
       )}

@@ -55,7 +55,7 @@ function apiKey(): string {
     throw new RiotApiError(
       503,
       "NO_API_KEY",
-      "RIOT_API_KEY is not set. Add it to .env.local and restart the dev server.",
+      "RIOT_API_KEY is not set in this environment.",
     );
   }
   return key;
@@ -77,6 +77,9 @@ async function riotFetch<T>(url: string, revalidate: number): Promise<T> {
 
   if (res.ok) return res.json() as Promise<T>;
 
+  // These messages are operator-facing: they land in server logs, and in
+  // development on the page itself. Deciding what a *visitor* should see is the
+  // route's job — see `key-notice.ts`.
   switch (res.status) {
     case 400:
       throw new RiotApiError(400, "BAD_REQUEST", "Riot rejected the request as malformed.");
@@ -84,14 +87,16 @@ async function riotFetch<T>(url: string, revalidate: number): Promise<T> {
       throw new RiotApiError(
         401,
         "INVALID_API_KEY",
-        "Riot rejected the API key. Check RIOT_API_KEY in .env.local.",
+        "Riot rejected the API key as invalid.",
       );
     case 403:
-      // Overwhelmingly this means a development key aged out — they last 24h.
+      // 403 spans an expired key, one Riot has blocked, and one not entitled to
+      // this endpoint. Expiry is the usual cause: development keys last 24
+      // hours and personal keys a few months, and both lapse silently.
       throw new RiotApiError(
         403,
         "KEY_FORBIDDEN",
-        "Riot returned 403. Development keys expire after 24 hours — regenerate yours at developer.riotgames.com and update .env.local.",
+        "Riot refused the API key — expired, blocked, or not entitled to this endpoint.",
       );
     case 404:
       throw new RiotApiError(404, "NOT_FOUND", "Riot has no record matching that request.");

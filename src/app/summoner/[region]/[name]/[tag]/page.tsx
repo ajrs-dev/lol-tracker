@@ -6,13 +6,14 @@ import { MatchList } from "@/components/match-list";
 import { RankCard, UnrankedCard } from "@/components/rank-card";
 import { getChampionsByKey, getSummonerSpellsByKey } from "@/lib/ddragon";
 import { formatNumber, timeAgo } from "@/lib/format";
+import { IN_DEVELOPMENT, KEY_FAULT_NOTICE, isKeyFault } from "@/lib/key-notice";
 import { getRegion, isRegionCode } from "@/lib/regions";
 import { RiotApiError, getSummonerProfile, hasApiKey } from "@/lib/riot";
 import type { SummonerProfile } from "@/lib/types";
 
 /**
- * Profiles go stale as soon as the player finishes a game, but Riot's dev keys
- * have a tight rate limit — two minutes is a reasonable middle.
+ * Profiles go stale as soon as the player finishes a game, but every Riot key
+ * has a rate limit to respect — two minutes is a reasonable middle.
  */
 export const revalidate = 120;
 
@@ -45,28 +46,38 @@ export async function generateMetadata(
   };
 }
 
-/** Friendly headings for the failure modes `riot.ts` distinguishes. */
+/** Headings for the failure modes `riot.ts` distinguishes — operator wording. */
 const ERROR_HEADINGS: Record<string, string> = {
   NO_API_KEY: "No Riot API key configured",
   INVALID_API_KEY: "Riot rejected the API key",
-  KEY_FORBIDDEN: "Riot API key expired",
+  KEY_FORBIDDEN: "Riot API key expired or unauthorized",
   RATE_LIMITED: "Rate limited by Riot",
   BAD_REQUEST: "Riot rejected the request",
   UPSTREAM_ERROR: "Riot API unavailable",
 };
 
 function ErrorPanel({ code, message }: { code: string; message: string }) {
+  const keyFault = isKeyFault(code);
+  const masked = keyFault && !IN_DEVELOPMENT; // visitors can't act on key faults
+  const showFix = keyFault && IN_DEVELOPMENT; // the developer can
+
   return (
     <div className="mx-auto max-w-2xl px-6 py-20">
       <div className="panel-gold rounded-lg p-6">
         <p className="eyebrow">Lookup failed</p>
         <h1 className="mt-2 font-display text-2xl text-gold-100">
-          {ERROR_HEADINGS[code] ?? "Something went wrong"}
+          {masked
+            ? KEY_FAULT_NOTICE.heading
+            : (ERROR_HEADINGS[code] ?? "Something went wrong")}
         </h1>
-        <p className="mt-3 leading-relaxed text-void-50">{message}</p>
-        {(code === "KEY_FORBIDDEN" || code === "INVALID_API_KEY") && (
+        <p className="mt-3 leading-relaxed text-void-50">
+          {masked ? KEY_FAULT_NOTICE.message : message}
+        </p>
+        {showFix && (
           <p className="mt-3 text-sm text-void-100">
-            Regenerate your key at{" "}
+            Set <code className="text-gold-200">RIOT_API_KEY</code> in{" "}
+            <code className="text-gold-200">.env.local</code> — grab a fresh key
+            at{" "}
             <a
               href="https://developer.riotgames.com"
               target="_blank"
@@ -74,10 +85,8 @@ function ErrorPanel({ code, message }: { code: string; message: string }) {
               className="text-hex-300 underline-offset-4 hover:underline"
             >
               developer.riotgames.com
-            </a>
-            , update <code className="text-gold-200">RIOT_API_KEY</code> in{" "}
-            <code className="text-gold-200">.env.local</code>, then restart the
-            dev server.
+            </a>{" "}
+            if you need one — then restart the dev server.
           </p>
         )}
       </div>
@@ -99,7 +108,7 @@ export default async function SummonerPage(
     return (
       <ErrorPanel
         code="NO_API_KEY"
-        message="Player lookup needs a Riot API key. Add RIOT_API_KEY to .env.local and restart the dev server — champion browsing works without one."
+        message="Player lookup needs a Riot API key. Champion browsing works without one."
       />
     );
   }
