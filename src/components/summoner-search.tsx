@@ -24,14 +24,15 @@ export function SummonerSearch({ compact = false, defaultRegion = "na1" }: Props
     const raw = query.trim();
 
     if (!raw) {
-      setError("Enter a name, like Faker or Faker#KR");
+      setError("Enter a name, like Hide on bush or Hide on bush#KR1");
       return;
     }
 
     const parsed = splitRiotId(raw);
 
-    // A '#' that didn't yield both halves ("Faker#", "#KR") is a typo, not an
-    // omitted tag — say so rather than searching for a name containing '#'.
+    // A '#' that didn't yield both halves ("Hide on bush#", "#KR1") is a typo,
+    // not an omitted tag — say so rather than searching for a name containing
+    // '#'.
     if (!parsed && raw.includes("#")) {
       setError("Riot IDs look like Name#TAG");
       return;
