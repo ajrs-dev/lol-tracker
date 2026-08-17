@@ -47,9 +47,9 @@ export default async function Home() {
           Every champion, every match, one index.
         </h1>
         <p className="mx-auto mt-4 max-w-xl leading-relaxed text-void-100">
-          Browse all {formatNumber(champions.length)} champions on the live
-          patch, or look up any player&apos;s rank, champion mastery, and recent
-          games.
+          Browse all {formatNumber(champions.length)}{" "}
+          champions on the live patch, or look up any player&apos;s rank,
+          champion mastery, and recent games.
         </p>
 
         <div className="mx-auto mt-8 max-w-md">
