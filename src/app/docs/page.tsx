@@ -258,8 +258,8 @@ export default function DocsPage() {
         <div className="rule-gold mt-3" />
         <p className="mt-5 max-w-2xl leading-relaxed text-void-100">
           The region code in a profile URL is the platform code. Note the tag in
-          a Riot ID is <em>not</em> necessarily the region — it&apos;s whatever
-          the player set.
+          a Riot ID is <em>not</em>{" "}
+          necessarily the region — it&apos;s whatever the player set.
         </p>
 
         <ul className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">

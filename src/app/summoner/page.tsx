@@ -30,9 +30,10 @@ export default function SummonerLandingPage() {
         Pick the region, then enter the Riot ID — like{" "}
         <span className="text-void-50">Hide on bush#KR1</span>. The tag after
         the{" "}
-        <span className="text-void-50">#</span> is optional: leave it off and
-        the region&apos;s usual tags get tried. Include it when you know it,
-        since tags aren&apos;t always the region code.
+        <span className="text-void-50">#</span>{" "}
+        is optional: leave it off and the region&apos;s usual tags get tried.
+        Include it when you know it, since tags aren&apos;t always the region
+        code.
       </p>
 
       {!hasApiKey() && (
