@@ -1,6 +1,7 @@
 import { cache } from "react";
 import type {
   ChampionDetail,
+  ChampionSkin,
   ChampionSummary,
   SummonerSpellData,
 } from "./types";
@@ -57,6 +58,97 @@ export const getChampion = cache(
     } catch {
       return null;
     }
+  },
+);
+
+/** Long enough for a cold CDN edge, short enough not to stall a build. */
+const ART_CHECK_TIMEOUT = 10_000;
+
+/** A dropped connection costs a real skin, so give each check another look. */
+const ART_CHECK_ATTEMPTS = 3;
+
+/**
+ * A skin entry is only worth rendering if Riot published art for it. Missing
+ * art answers 403 rather than 404, so `res.ok` is the signal either way.
+ */
+async function hasLoadingArt(
+  championId: string,
+  skinNum: number,
+): Promise<boolean> {
+  const url = championLoadingUrl(championId, skinNum);
+
+  for (let attempt = 1; attempt <= ART_CHECK_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(url, {
+        // HEAD is enough — we only need the status, not the JPEG. Next only
+        // caches 2xx, so the hits come free on a warm build and it's the
+        // misses that get re-checked; keeping them cheap is the point.
+        method: "HEAD",
+        cache: "force-cache",
+        next: { revalidate: STATIC_TTL, tags: ["ddragon"] },
+        // Bounds the wait, and opts out of request-level memoization — which
+        // is what lets a retry reach the network at all, since Next remembers
+        // the rejected promise from the previous attempt.
+        signal: AbortSignal.timeout(ART_CHECK_TIMEOUT),
+      });
+      return res.ok;
+    } catch {
+      if (attempt < ART_CHECK_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+      }
+    }
+  }
+
+  // Don't render art we couldn't confirm. A prerender lasts until the next
+  // revalidation, so guessing wrong here would pin a broken image to the page
+  // for half a day; a missing tile is the cheaper mistake.
+  return false;
+}
+
+/**
+ * A champion can carry 100 skin entries. Firing them all at once — across the
+ * workers `next build` runs in parallel — makes the CDN drop connections, and
+ * every dropped check costs a real skin, so keep a lid on it.
+ */
+const ART_CHECK_LIMIT = 6;
+
+async function mapWithLimit<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (next < items.length) {
+        const index = next++;
+        results[index] = await worker(items[index]);
+      }
+    }),
+  );
+  return results;
+}
+
+/**
+ * Data Dragon's `skins` array lists chromas next to real skins — roughly three
+ * quarters of the entries — and Riot ships no art for them, so rendering the
+ * raw list gives a wall of broken images (Fiora: 100 entries, 17 with art).
+ *
+ * Nothing in the payload separates the two. `chromas` flags the *parent* skin
+ * rather than the chromas themselves, and the names are no help: "Praetorian
+ * Fiddlesticks" reads like a skin but has no art, while "Prestige K/DA Ahri
+ * (2022)" reads like a chroma and does. Asking the CDN is the only rule that
+ * holds, and it self-corrects whenever Riot fills a gap in.
+ */
+export const getSkinsWithArt = cache(
+  async (champion: ChampionDetail): Promise<ChampionSkin[]> => {
+    const available = await mapWithLimit(
+      champion.skins,
+      ART_CHECK_LIMIT,
+      (skin) => hasLoadingArt(champion.id, skin.num),
+    );
+    return champion.skins.filter((_, index) => available[index]);
   },
 );
 
